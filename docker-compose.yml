@@ -1,0 +1,29 @@
+services:
+  php:
+    build: .
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      COMPOSER_HOME: /tmp/composer
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: fleet
+      PGUSER: fleet
+      PGPASSWORD: fleet
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fleet
+      POSTGRES_USER: fleet
+      POSTGRES_PASSWORD: fleet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleet -d fleet"]
+      interval: 2s
+      timeout: 3s
+      retries: 15

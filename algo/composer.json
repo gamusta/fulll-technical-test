@@ -1,0 +1,39 @@
+{
+    "name": "fulll/algo",
+    "description": "Fulll technical test — FizzBuzz",
+    "type": "project",
+    "require": {
+        "php": "^8.3"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/phpstan": "^2.3",
+        "phpunit/phpunit": "^12.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Fulll\\Algo\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fulll\\Algo\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "cs": "php-cs-fixer fix --dry-run --diff",
+        "cs:fix": "php-cs-fixer fix",
+        "phpstan": "phpstan analyse",
+        "qa": [
+            "@cs",
+            "@phpstan",
+            "@test"
+        ],
+        "test": "phpunit"
+
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": { "php": "8.3.0" }
+    }
+}

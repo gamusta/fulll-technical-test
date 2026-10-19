@@ -26,6 +26,7 @@
         "behat": "behat --strict",
         "smoke": "sh tests/cli-smoke.sh",
         "test": [
+            "@db:schema",
             "@phpunit",
             "@behat",
             "@smoke"

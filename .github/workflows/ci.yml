@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  algo:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: algo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - run: composer install --no-progress
+      - run: composer qa
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: fleet
+          POSTGRES_USER: fleet
+          POSTGRES_PASSWORD: fleet
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U fleet -d fleet"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: fleet
+      PGUSER: fleet
+      PGPASSWORD: fleet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_pgsql
+          coverage: none
+      - run: composer install --no-progress
+      - run: composer qa

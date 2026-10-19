@@ -3,4 +3,12 @@ default:
     memory:
       paths: ['%paths.base%/features']
       contexts:
-        - Fulll\Tests\Behat\FleetContext
+        - Fulll\Tests\Behat\FleetContext:
+            storage: memory
+    postgres:
+      paths: ['%paths.base%/features']
+      filters:
+        tags: '@critical'
+      contexts:
+        - Fulll\Tests\Behat\FleetContext:
+            storage: postgres

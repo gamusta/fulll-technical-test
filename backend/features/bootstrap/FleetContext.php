@@ -23,6 +23,7 @@ use Fulll\Backend\Domain\Location;
 use Fulll\Backend\Domain\VehicleAlreadyParkedAtLocation;
 use Fulll\Backend\Domain\VehicleAlreadyRegistered;
 use Fulll\Backend\Infra\InMemoryFleetRepository;
+use Fulll\Backend\Infra\PdoFleetRepository;
 
 final class FleetContext implements Context
 {
@@ -33,9 +34,15 @@ final class FleetContext implements Context
     private Location $location;
     private ?\Throwable $error = null;
 
-    public function __construct()
+    /**
+     * @param 'memory'|'postgres' $storage set per suite in behat.yml
+     */
+    public function __construct(string $storage = 'memory')
     {
-        $this->fleets = new InMemoryFleetRepository();
+        $this->fleets = match ($storage) {
+            'memory' => new InMemoryFleetRepository(),
+            'postgres' => self::emptyPostgresRepository(),
+        };
     }
 
     #[Given('my fleet')]
@@ -146,6 +153,14 @@ final class FleetContext implements Context
     private function register(string $fleetId): void
     {
         (new RegisterVehicleHandler($this->fleets))->handle(new RegisterVehicle($fleetId, $this->plateNumber));
+    }
+
+    private static function emptyPostgresRepository(): PdoFleetRepository
+    {
+        $pdo = new \PDO('pgsql:');
+        $pdo->exec('TRUNCATE fleet_vehicles, fleets');
+
+        return new PdoFleetRepository($pdo);
     }
 
     private static function check(bool $condition, string $message): void

@@ -18,6 +18,10 @@ final readonly class Location
         if (!($longitude >= -180.0 && $longitude <= 180.0)) {
             throw new \InvalidArgumentException(sprintf('Longitude must be between -180 and 180, got %s.', $longitude));
         }
+
+        if ($altitude !== null && !is_finite($altitude)) {
+            throw new \InvalidArgumentException(sprintf('Altitude must be a finite number, got %s.', $altitude));
+        }
     }
 
     public function equals(self $other): bool

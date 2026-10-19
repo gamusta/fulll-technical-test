@@ -3,7 +3,9 @@
     "description": "Fulll technical test — Vehicle fleet parking management",
     "type": "project",
     "require": {
-        "php": "^8.3"
+        "php": "^8.3",
+        "ext-pdo_pgsql": "*",
+        "symfony/console": "^7.3"
     },
     "autoload": {
         "psr-4": {
@@ -12,15 +14,22 @@
     },
     "autoload-dev": {
         "psr-4": {
+            "Fulll\\Backend\\Tests\\": "tests/",
             "Fulll\\Tests\\Behat\\": "features/bootstrap/"
         }
     },
     "scripts": {
-        "behat": "behat --strict",
-        "test": "@behat",
-        "phpstan": "phpstan analyse",
         "cs": "php-cs-fixer fix --dry-run --diff",
         "cs:fix": "php-cs-fixer fix",
+        "phpstan": "phpstan analyse",
+        "phpunit": "phpunit",
+        "behat": "behat --strict",
+        "smoke": "sh tests/cli-smoke.sh",
+        "test": [
+            "@phpunit",
+            "@behat",
+            "@smoke"
+        ],
         "qa": [
             "@cs",
             "@phpstan",
@@ -31,10 +40,13 @@
     "require-dev": {
         "behat/behat": "^3.34",
         "friendsofphp/php-cs-fixer": "^3.95",
-        "phpstan/phpstan": "^2.3"
+        "phpstan/phpstan": "^2.3",
+        "phpunit/phpunit": "^12.5"
     },
     "config": {
         "sort-packages": true,
-        "platform": { "php": "8.3.0" }
+        "platform": {
+            "php": "8.3.0"
+        }
     }
 }

@@ -1,0 +1,120 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/vendor/autoload.php';
+
+use Fulll\Backend\App\Command\CreateFleet;
+use Fulll\Backend\App\Command\CreateFleetHandler;
+use Fulll\Backend\App\Command\ParkVehicle;
+use Fulll\Backend\App\Command\ParkVehicleHandler;
+use Fulll\Backend\App\Command\RegisterVehicle;
+use Fulll\Backend\App\Command\RegisterVehicleHandler;
+use Fulll\Backend\Domain\FleetRepository;
+use Fulll\Backend\Infra\PdoFleetRepository;
+use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\ConsoleOutputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+
+/**
+ * Runs a use case against Postgres (connected lazily, so `--help` works without a database).
+ * Errors go to stderr: 1 for business/database errors, 2 for invalid input.
+ *
+ * @param callable(FleetRepository): void $useCase
+ */
+$run = static function (OutputInterface $output, callable $useCase): int {
+    try {
+        $useCase(PdoFleetRepository::fromEnvironment());
+
+        return Command::SUCCESS;
+    } catch (DomainException | InvalidArgumentException | PDOException $e) {
+        $errorOutput = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
+        $errorOutput->writeln(sprintf('<error>%s</error>', $e->getMessage()));
+
+        return $e instanceof InvalidArgumentException ? Command::INVALID : Command::FAILURE;
+    }
+};
+
+$argument = static function (InputInterface $input, string $name): string {
+    $value = $input->getArgument($name);
+
+    return is_string($value) ? $value : throw new InvalidArgumentException(sprintf('"%s" is required.', $name));
+};
+
+$coordinate = static function (InputInterface $input, string $name): ?float {
+    $value = $input->getArgument($name);
+    if ($value === null) {
+        return null;
+    }
+    if (!is_numeric($value)) {
+        throw new InvalidArgumentException(sprintf('"%s" must be a number.', $name));
+    }
+
+    return (float) $value;
+};
+
+$app = new Application('fleet');
+
+$app->register('create')
+    ->setDescription('Create a fleet and print its id')
+    ->addArgument('userId', InputArgument::REQUIRED)
+    ->setCode(static fn(InputInterface $input, OutputInterface $output): int => $run(
+        $output,
+        static function (FleetRepository $fleets) use ($input, $output, $argument): void {
+            $output->writeln((new CreateFleetHandler($fleets))->handle(new CreateFleet($argument($input, 'userId'))));
+        },
+    ));
+
+$app->register('register-vehicle')
+    ->setDescription('Register a vehicle into a fleet')
+    ->addArgument('fleetId', InputArgument::REQUIRED)
+    ->addArgument('vehiclePlateNumber', InputArgument::REQUIRED)
+    ->setCode(static fn(InputInterface $input, OutputInterface $output): int => $run(
+        $output,
+        static function (FleetRepository $fleets) use ($input, $argument): void {
+            (new RegisterVehicleHandler($fleets))->handle(new RegisterVehicle(
+                $argument($input, 'fleetId'),
+                $argument($input, 'vehiclePlateNumber'),
+            ));
+        },
+    ));
+
+$app->register('localize-vehicle')
+    ->setDescription('Park a vehicle of a fleet at a location')
+    ->addArgument('fleetId', InputArgument::REQUIRED)
+    ->addArgument('vehiclePlateNumber', InputArgument::REQUIRED)
+    ->addArgument('lat', InputArgument::REQUIRED)
+    ->addArgument('lng', InputArgument::REQUIRED)
+    ->addArgument('alt', InputArgument::OPTIONAL)
+    ->setCode(static fn(InputInterface $input, OutputInterface $output): int => $run(
+        $output,
+        static function (FleetRepository $fleets) use ($input, $argument, $coordinate): void {
+            (new ParkVehicleHandler($fleets))->handle(new ParkVehicle(
+                $argument($input, 'fleetId'),
+                $argument($input, 'vehiclePlateNumber'),
+                (float) $coordinate($input, 'lat'),
+                (float) $coordinate($input, 'lng'),
+                $coordinate($input, 'alt'),
+            ));
+        },
+    ));
+
+// Symfony Console reads "-2.3" as an option: everything from the first negative number on is an argument.
+/** @var list<string> $tokens */
+$tokens = $_SERVER['argv'];
+foreach ($tokens as $i => $token) {
+    if ($token === '--') {
+        break;
+    }
+    if (is_numeric($token) && $token[0] === '-') {
+        array_splice($tokens, $i, 0, '--');
+        break;
+    }
+}
+
+$app->run(new ArgvInput($tokens));
